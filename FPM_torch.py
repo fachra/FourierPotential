@@ -11,13 +11,14 @@ device = torch.device("cpu")
 # device = torch.device("cuda:0")
 # %% load geometrical model
 mat = io.loadmat('geo.mat')
-boundary_points, boundary_normals, dl, curvature, region_area = get_geo(mat)
+boundary_points, boundary_normals, dl, curvature, region_area = get_geo(
+    mat, device=device)
 del mat
 # %% dMRI settings
 D0 = 1e-3  # [um^2/us]
 sdelta, bdelta = 2500, 5000  # [us]
 b = 3000  # [us/um^2]
-q, q_square, q_max = get_q(sdelta, bdelta, b)
+q, q_square, q_max = get_q(sdelta, bdelta, b, device=device)
 # %% simulation setting
 dt = 5  # [us]
 n_eta = 2
@@ -25,10 +26,10 @@ eta = n_eta*dt  # [us]
 freq_resolution = 0.05  # [um^-1]
 freq_max = 1  # [um^-1]
 
-time_val = get_time(sdelta, bdelta, dt)
-freq, freq_square = get_freq(freq_max, 0, freq_resolution)
+time_val = get_time(sdelta, bdelta, dt, device=device)
+freq, freq_square = get_freq(freq_max, 0, freq_resolution, device=device)
 # %% some constants
-n_points, n_time = boundary_points.shape[1], time_val.numel()
+n_points, n_time = boundary_points.shape[1], time_val.shape[1]
 n_freqs, n_q = freq.shape[1], q.shape[1]
 # %%init
 mu = torch.empty((n_q, n_points, n_time), device=device, dtype=ctype)
@@ -120,7 +121,7 @@ S_short[:, :, n_eta+1:] = np.sqrt(D0*eta/np.pi)*mu[:, :, n_eta+1:]
 # [n_q x n_points x n_time]
 S_long = (fourier_bases.t().conj() @ fhat)*(D0*freq_resolution**2)
 # [n_q x n_points x n_time]
-S_solution = S_long + S_short
+omega = S_long + S_short
 
 omega_bar = torch.zeros(n_q, n_time, device=device, dtype=ctype)
 u = torch.zeros(n_q, n_points, n_time, device=device, dtype=ctype)
@@ -130,12 +131,12 @@ weight1 = (1 - torch.exp(-omega_bar_a*dt) *
 weight2 = (torch.exp(-omega_bar_a*dt) +
            omega_bar_a*dt - 1)/(omega_bar_a**2*dt)
 # [n_q x n_points x n_time] matrix
-u[:, :, 1:] = weight1*S_solution[:, :, 0:-1] + weight2*S_solution[:, :, 1:]
+u[:, :, 1:] = weight1*omega[:, :, 0:-1] + weight2*omega[:, :, 1:]
 
 for iq in range(n_q):
     if np.abs(q_square[0, iq]) < 1e-20:
-        u[iq, :, 1:] = (S_solution[iq, :, 0:-1] +
-                        S_solution[iq, :, 1:])*dt/2
+        u[iq, :, 1:] = (omega[iq, :, 0:-1] +
+                        omega[iq, :, 1:])*dt/2
 
 omega_bar_temp = torch.squeeze(dl @ (u*(2*np.pi*1j*(q.t() @ boundary_normals) *
                                         torch.exp(2*np.pi*1j*q.t()@boundary_points)).reshape(n_q, n_points, 1)))
@@ -145,4 +146,4 @@ for it in range(1, n_time):
 omega_bar = omega_bar/region_area
 
 # %%
-plt.plot(time_val.reshape(-1), torch.real(omega_bar[-2, :]))
+plt.plot(time_val.reshape(-1).cpu(), torch.real(omega_bar[-2, :]).cpu())
