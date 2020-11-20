@@ -181,7 +181,7 @@ class Model2D:
             points = np.array(list(model.exterior.coords)).T
             if self._is_clockwise(points):
                 # enforce counterclockwise order
-                points = points[::-1]
+                points = points[:, ::-1]
             # B-cubic-spline interpolation
             self._tck, self._u = splprep(points, u=None, s=0.0, per=1)
             self.area = model.area
@@ -192,7 +192,7 @@ class Model2D:
             points = model
             if len(points.shape) == 2 and points.shape[0] == 2 and points.shape[1] >= 3:
                 if self._is_clockwise(points):
-                    points = points[::-1]
+                    points = points[:, ::-1]
                 self._tck, self._u = splprep(points, u=None, s=0.0, per=1)
                 self.area = self._area()
                 self.perimeter = self._perimeter()
