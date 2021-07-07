@@ -7,7 +7,7 @@ import trimesh
 import shapely
 
 
-def load_stl(stl_path, projection='best', remesh_size=1, alpha=1.5):
+def stl_3Dto2D(stl_path, projection='best', remesh_size=1, alpha=1.5):
     # load 3D model
     mymesh = trimesh.load_mesh(stl_path)
     # refine model (mandatory)
@@ -18,7 +18,7 @@ def load_stl(stl_path, projection='best', remesh_size=1, alpha=1.5):
         center, projection = trimesh.points.plane_fit(vertices)
     else:
         center = vertices.mean(axis=0)
-    # 3D model to 2D model
+    # project 3D model to a plane
     points = trimesh.points.project_to_plane(
         vertices-center, plane_normal=projection)
     # return the boundary
@@ -33,7 +33,7 @@ class Ellipse:
     '''
 
     def __init__(self, center_x, center_y, a, b, n_points=300,
-                 dist_max=None, rotate_angle=0, refine=True) -> None:
+                 dist_max=None, rotate_angle=0, refine=True):
         self.center_x = center_x
         self.center_y = center_y
         self.a, self.b = a, b
@@ -52,8 +52,25 @@ class Ellipse:
             self.refine()
         self.normals = self._normals()
         self.dl = self._dl()
-        if rotate_angle != 0:
-            self._rotate(rotate_angle)
+        self.rotate_angle = rotate_angle
+        if self.rotate_angle != 0:
+            self._rotate()
+
+    def __repr__(self):
+        s = (f'<Ellipse>: center_x = {self.center_x},\n'
+             f'           center_y = {self.center_y},\n'
+             f'           a = {self.a}, b = {self.b},\n'
+             f'           n_points = {self.n_points},\n'
+             f'           rotate_angle = {self.rotate_angle}.')
+        return s
+
+    def __str__(self):
+        s = ('An ellipse with\n'
+             f'    a = {self.a}, b = {self.b},\n'
+             f'    centered at ({self.center_x}, {self.center_y}),\n'
+             f'    rotated {self.rotate_angle*180/np.pi} degrees\n'
+             '    in anticlockwise direction.')
+        return s
 
     def _points(self):
         x = self.a*np.cos(2*np.pi*self.theta) + self.center_x
@@ -62,7 +79,8 @@ class Ellipse:
 
     def _perimeter(self):
         """
-        Return the approximate perimeter of an ellipse given by Gauss-Kummer Series.
+        Return the approximate perimeter of an ellipse
+        given by Gauss-Kummer Series.
         https://mathworld.wolfram.com/Gauss-KummerSeries.html
 
         Parameters
@@ -78,8 +96,9 @@ class Ellipse:
             The 8th order approximate perimeter.
         """
         h = (self.a-self.b)**2/(self.a+self.b)**2
-        return np.pi*(self.a+self.b)*(1+h/4+h**2/64+h**3/256+25 *
-                                      h**4/16384+49*h**5/65536+441*h**6/1048576+1089*h**7/4194304)
+        return np.pi*(self.a+self.b)*(1 + h/4 + h**2/64 + h**3/256 +
+                                      25*h**4/16384 + 49*h**5/65536 +
+                                      441*h**6/1048576 + 1089*h**7/4194304)
 
     def _curvature(self):
         '''
@@ -97,15 +116,16 @@ class Ellipse:
         return normals/np.linalg.norm(normals, axis=0)
 
     def _dl(self):
-        dl = np.linalg.norm(
-            self.points - np.c_[self.points[:, 1:], self.points[:, 0:1]], axis=0)
+        dl = np.linalg.norm(self.points -
+                            np.c_[self.points[:, 1:], self.points[:, 0:1]],
+                            axis=0)
         return ((dl + np.r_[dl[-1], dl[0:-1]])/2)
 
-    def _rotate(self, angle):
+    def _rotate(self):
         '''
         https://en.wikipedia.org/wiki/Rotation_matrix#In_two_dimensions
         '''
-        c, s = np.cos(angle), np.sin(angle)
+        c, s = np.cos(self.rotate_angle), np.sin(self.rotate_angle)
         R = np.array([[c, -s], [s, c]])
         self.points = np.matmul(R, self.points)
         self.normals = np.matmul(R, self.normals)
@@ -113,7 +133,8 @@ class Ellipse:
 
     def refine(self):
         '''
-        Strategy of refinement: add more points to the region whose curvature is large.
+        Strategy of refinement: add more points to the region
+        whose curvature is high.
         '''
         curva_abs = np.abs(self.curvature)
         curva_ratio = np.rint(
@@ -133,16 +154,19 @@ class Ellipse:
                 v_down = int(v/2)
                 v_up = v - v_down
                 if v_down > 0:
-                    theta[-v_down:] = np.linspace((self.theta[-1]-1)/2,
-                                                  0, v_down+1, endpoint=False)[1:] + 1
+                    theta[-v_down:] = 1 + np.linspace((self.theta[-1]-1)/2,
+                                                      0, v_down+1,
+                                                      endpoint=False)[1:]
                 theta[:v_up+1] = np.linspace(self.theta[0],
-                                             (self.theta[1]+self.theta[0])/2, v_up+1)
+                                             (self.theta[1]+self.theta[0])/2,
+                                             v_up+1)
                 pointer += v_up+1
             else:
                 # add points according to the curvature ratio
-                theta[pointer:pointer+v+1] = \
-                    np.linspace(self.theta[i], self.theta[i-1], v+1,
-                                endpoint=False)[::-1] + (self.theta[i]-self.theta[i-1])/2
+                theta[pointer:pointer+v+1] = (self.theta[i] -
+                                              self.theta[i-1])/2 + \
+                    np.linspace(self.theta[i],
+                                self.theta[i-1], v+1, endpoint=False)[::-1]
                 pointer += v+1
 
         # compute refined points
@@ -152,21 +176,32 @@ class Ellipse:
         self.curvature = self._curvature()
         return 0
 
-    def plot(self):
-        fig, axs = plt.subplots(1)
-        axs.plot(self.points[0, :], self.points[1, :], 'b--')
-        axs.quiver(self.points[0, :], self.points[1, :],
+    def plot(self) -> None:
+        plt.plot(self.points[0, :], self.points[1, :], 'b--')
+        plt.quiver(self.points[0, :], self.points[1, :],
                    self.normals[0, :], self.normals[1, :])
-        axs.axis('equal')
-        return fig
+        plt.axis('equal')
 
 
 class Circle(Ellipse):
-    def __init__(self, center_x, center_y, r, n_points=300, dist_max=None) -> None:
+    def __init__(self, center_x, center_y, r, n_points=300, dist_max=None):
         Ellipse.__init__(self, center_x, center_y, r, r,
                          n_points=n_points, dist_max=dist_max, refine=False)
         self.perimeter = 2*np.pi*r
         self.curvature = np.ones_like(self.curvature)/r
+
+    def __repr__(self):
+        s = (f'<Circle(Ellipse)>: center_x = {self.center_x},\n'
+             f'                   center_y = {self.center_y},\n'
+             f'                   r = {self.a},\n'
+             f'                   n_points = {self.n_points}.')
+        return s
+
+    def __str__(self):
+        s = ('A circle with\n'
+             f'    radius = {self.a},\n'
+             f'    centered at ({self.center_x}, {self.center_y}).')
+        return s
 
 
 class Model2D:
@@ -174,8 +209,22 @@ class Model2D:
     Class of external models.
     '''
 
+    def __repr__(self):
+        s = (f'<Model2d>: n_points = {self.n_points},\n'
+             f'           perimeter = {self.perimeter:.2f},\n'
+             f'           area = {self.area:.2f}.')
+        return s
+
+    def __str__(self):
+        s = ('An imported model with\n'
+             f'    perimeter = {self.perimeter:.2f},\n'
+             f'    area = {self.area:.2f},\n'
+             f'    n_points = {self.n_points},\n'
+             f'    max_curvature = {np.max(self.curvature):.4f}.')
+        return s
+
     def __init__(self, model, n_points=None, dist_max=None,
-                 x_shift=0, y_shift=0, rotate_angle=0, refine=True) -> None:
+                 x_shift=0, y_shift=0, rotate_angle=0, refine=True):
         # model type: Polygon
         if isinstance(model, shapely.geometry.polygon.Polygon):
             points = np.array(list(model.exterior.coords)).T
@@ -186,11 +235,12 @@ class Model2D:
             self._tck, self._u = splprep(points, u=None, s=0.0, per=1)
             self.area = model.area
             self.perimeter = model.length
-
         # model type: point cloud
-        if isinstance(model, np.ndarray):
+        elif isinstance(model, np.ndarray):
             points = model
-            if len(points.shape) == 2 and points.shape[0] == 2 and points.shape[1] >= 3:
+            if len(points.shape) == 2 and \
+                    points.shape[0] == 2 and \
+                    points.shape[1] >= 3:
                 if self._is_clockwise(points):
                     points = points[:, ::-1]
                 self._tck, self._u = splprep(points, u=None, s=0.0, per=1)
@@ -198,7 +248,11 @@ class Model2D:
                 self.perimeter = self._perimeter()
             else:
                 raise ValueError(
-                    'Input data should be a 2xN (N>=3) array containing the coordinates of sampling points on a closed 2D curve.')
+                    'Input data should be a 2xN (N>=3) array \
+                     containing the coordinates of sampling points \
+                     on a closed 2D curve.')
+        else:
+            raise ValueError('Illegal input model.')
 
         if n_points is not None:
             self.n_points = n_points
@@ -267,7 +321,9 @@ class Model2D:
 
     def _dl(self):
         dl = np.linalg.norm(
-            self.points - np.c_[self.points[:, 1:], self.points[:, 0:1]], axis=0)
+            self.points -
+            np.c_[self.points[:, 1:], self.points[:, 0:1]],
+            axis=0)
         return (dl + np.r_[dl[-1], dl[0:-1]])/2
 
     def _rotate(self, angle):
@@ -282,7 +338,8 @@ class Model2D:
 
     def refine(self):
         '''
-        Strategy of refinement: add more points to the region whose curvature is large.
+        Strategy of refinement: add more points to the region
+        whose curvature is high.
         '''
         curva_abs = np.abs(self.curvature)
         curva_ratio = np.rint(
@@ -299,15 +356,16 @@ class Model2D:
                 v_down = int(v/2)
                 v_up = v - v_down
                 if v_down > 0:
-                    u[-v_down:] = np.linspace((self.u[-1]-1)/2,
-                                              0, v_down+1, endpoint=False)[1:] + 1
+                    u[-v_down:] = 1 + np.linspace((self.u[-1]-1)/2,
+                                                  0, v_down+1,
+                                                  endpoint=False)[1:]
                 u[:v_up+1] = np.linspace(self.u[0],
                                          (self.u[1]+self.u[0])/2, v_up+1)
                 pointer += v_up+1
             else:
-                u[pointer:pointer+v+1] = \
-                    np.linspace(self.u[i], self.u[i-1], v+1,
-                                endpoint=False)[::-1] + (self.u[i]-self.u[i-1])/2
+                u[pointer:pointer+v+1] = (self.u[i]-self.u[i-1])/2 + \
+                    np.linspace(self.u[i], self.u[i-1],
+                                v+1, endpoint=False)[::-1]
                 pointer += v+1
 
         self.n_points = n_points_refined
@@ -315,10 +373,8 @@ class Model2D:
         self.curvature = self._curvature()
         return 0
 
-    def plot(self):
-        fig, axs = plt.subplots(1)
-        axs.plot(self.points[0, :], self.points[1, :], 'b--')
-        axs.quiver(self.points[0, :], self.points[1, :],
+    def plot(self) -> None:
+        plt.plot(self.points[0, :], self.points[1, :], 'b--')
+        plt.quiver(self.points[0, :], self.points[1, :],
                    self.normals[0, :], self.normals[1, :])
-        axs.axis('equal')
-        return fig
+        plt.axis('equal')
