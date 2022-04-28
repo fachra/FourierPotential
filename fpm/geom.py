@@ -333,8 +333,7 @@ class Circle(Ellipse):
                  n_points=300,
                  dist_max=None) -> None:
         # initialize parent class
-        Ellipse.__init__(self,
-                         center_x,
+        super().__init__(center_x,
                          center_y,
                          r,
                          r,
@@ -346,11 +345,6 @@ class Circle(Ellipse):
 
         return None
 
-    @property
-    def perimeter(self):
-        """Circle perimeter."""
-
-        return 2*np.pi*self.r
 
     def __repr__(self):
         s = (f'<Circle(Ellipse)>: center_x = {self.center_x},\n'

@@ -282,7 +282,7 @@ class Solver:
             raise ValueError(
                 "'frequency_resolution' should be less than 'frequency_max'.")
 
-        freq_y, freq_x = torch.meshgrid(-temp, temp)
+        freq_y, freq_x = torch.meshgrid(-temp, temp, indexing='ij')
         self.freq = torch.cat(
             (freq_x.reshape((1, -1)), freq_y.reshape((1, -1))), axis=0)
         self.freq_square = self.freq.pow(2).sum(axis=0)
@@ -1368,7 +1368,7 @@ class Solver:
         s += f'    datatype = {self.dtype}\n'
         s += f'    freq_memory_ratio = {self.freq_memory_ratio}\n'
         s += '\n'
-        s += 'Individual info of models. Make sure there is no overlapping.\n'
+        s += 'Individual info of models. Make sure geometries do not overlap.\n'
         for m in self.geom:
             s += f'{m}\n'
         return s
