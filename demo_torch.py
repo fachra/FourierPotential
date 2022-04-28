@@ -1,20 +1,15 @@
 #!/usr/bin/env python
-import FPM.geom as geo
-from FPM.solver import FPM, save
+from fpm import Circle, Solver, save
 import time
 
 
 if __name__ == "__main__":
-    # stl_path = 'neuron_models/03b_spindle4aACC.stl'
-    # stl = geo.stl_3Dto2D(stl_path)
-
-    # c = geo.Circle(0, 0, 1, dist_max=0.01)
-    e = geo.Ellipse(10, 10, 2, 10, dist_max=0.1)
-    # m = geo.Model2D(stl, refine=True)
+    # define a circle with radius 1 um
+    c = Circle(0, 0, 1, dist_max=0.01)
 
     parameters = {
         # geometry model
-        'geom': (e,),
+        'geom': (c,),
         # dMRI
         'diffusivity': 2e-3,
         'delta': (1000, 5000),
@@ -26,12 +21,12 @@ if __name__ == "__main__":
         'frequency_resolution': 0.1,  # [um^-1]
         'frequency_max': 10,  # [um^-1]
         # data type and device
-        'gpu': [0, 1, 2],  # torch.device("cpu")
+        'gpu': [0, 2, 3],
         'freq_memory_ratio': 30
     }
-    circle = FPM(**parameters)
+    sim = Solver(**parameters)
     s = time.time()
-    circle.run()
+    sim.run()
     e = time.time()
-    print(e-s)
-    save(circle, '/media/chengran/sssd/FP/ellipse_6.pt')
+    print(f"Elapsed time: {e-s} s.")
+    save(sim, 'circle_sim.pt')
