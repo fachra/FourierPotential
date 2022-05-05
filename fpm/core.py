@@ -12,7 +12,9 @@ mp.set_start_method('spawn', force=True)
 
 
 class Solver:
+
     """Class for Fourier potential simulations."""
+
     # define alias
     _2pij = 2*np.pi*1j
     _4pis = 4*np.pi**2
@@ -181,14 +183,14 @@ class Solver:
         return None
 
     def _geom_init(self) -> int:
-        """Initialize geometry related tensors.
+        """
+        Initialize geometry related tensors.
 
         Returns
         -------
         int
             total number of points
         """
-
         # accumulate number of points
         self.n_points = 0
         for m in self.geom:
@@ -217,14 +219,14 @@ class Solver:
         return self.n_points
 
     def _q_init(self) -> int:
-        """Initialize q related tensors.
+        """
+        Initialize q related tensors.
 
         Returns
         -------
         int
             number of q-vectors
         """
-
         self.q = torch.from_numpy(self.q).type(self.dtype)
         self.q_norm = torch.from_numpy(self.q_norm)
         self.q_square = (self.q_norm.pow(2)).type(self.dtype).reshape((1, -1))
@@ -233,7 +235,8 @@ class Solver:
         return self.n_q
 
     def _time_init(self) -> int:
-        """Initialize time related tensors.
+        """
+        Initialize time related tensors.
 
         Returns
         -------
@@ -245,7 +248,6 @@ class Solver:
         ValueError
             time step is too large
         """
-
         self.T = torch.linspace(0, self.bdelta-self.sdelta,
                                 round((self.bdelta-self.sdelta)/self.dt) + 1)
         if len(self.T) > 1:
@@ -260,7 +262,8 @@ class Solver:
         return self.n_time
 
     def _freq_init(self) -> int:
-        """Initialize frequency related tensors.
+        """
+        Initialize frequency related tensors.
 
         Returns
         -------
@@ -272,7 +275,6 @@ class Solver:
         ValueError
             frequency step is too large
         """
-
         n_temp = int(2*np.ceil(self.f_max/self.df) + 1)
         temp = torch.linspace(-self.f_max, self.f_max,
                               n_temp, dtype=torch.double)
@@ -294,7 +296,6 @@ class Solver:
 
     def check(self, plot=False) -> None:
         """Check simulation parameters and plot geometries."""
-
         # print simulation parameters
         print(self)
 
@@ -308,7 +309,8 @@ class Solver:
         return None
 
     def has_run(self):
-        """Check simulation status.
+        """
+        Check simulation status.
 
         Returns
         -------
@@ -317,13 +319,14 @@ class Solver:
         """
         return self._run
 
-    def save_fft(self):
+    def _save_fft(self):
         """Not implemented."""
         # TODO
-        pass
+        raise NotImplementedError('"save_fft" is not implemented.')
 
     def run(self) -> None:
-        """Run simulations.
+        """
+        Run simulations.
 
         Raises
         ------
@@ -332,7 +335,6 @@ class Solver:
         RuntimeError
             unknown device
         """
-
         # print simulation info
         self.check()
         if self.has_run():
@@ -383,14 +385,14 @@ class Solver:
         return self.run()
 
     def _store(self, results) -> None:
-        """Store results.
+        """
+        Store results.
 
         Parameters
         ----------
         results : list of tensors
             simulated results
         """
-
         self.mu = torch.cat([res[0] for res in results])
         self.S_short = torch.cat([res[1] for res in results])
         self.S_long = torch.cat([res[2] for res in results])
@@ -403,7 +405,8 @@ class Solver:
         return None
 
     def _is_mem_enough(self, device):
-        """Check if `device` has enough memory.
+        """
+        Check if `device` has enough memory.
 
         Parameters
         ----------
@@ -415,7 +418,6 @@ class Solver:
         bool
             True, if memory is enough
         """
-
         # get the available memory size
         if device == torch.device("cpu"):
             mem_available = psutil.virtual_memory().available
@@ -430,12 +432,12 @@ class Solver:
         return (least_mem < mem_available, least_mem, mem_available)
 
     def _launch(self, ind, device):
-        """Launch simulation units.
+        """
+        Launch simulation units.
 
         The function can be distributed to several processes,
         so it can run on multiple GPUs.
         """
-
         # get number of q's distributed to this process
         n_q = len(ind)
 
@@ -454,16 +456,17 @@ class Solver:
         res_list = [None] * n_q
         for iq in range(n_q):
             print(f"Running FPM simulation: {ind[iq]+1} / {self.n_q}.")
-            res_list[iq] = self.simulation_unit(*variables,
-                                                q[:, [iq]], q_square[:, iq],
-                                                device, save_fft=False)
+            res_list[iq] = self._simulation_unit(*variables,
+                                                 q[:, [iq]], q_square[:, iq],
+                                                 device, save_fft=False)
 
         return res_stack(res_list)
 
-    def simulation_unit(self, points, normals,
-                        dl, curvature, T, freq, freq_square,
-                        q, q_square, device, save_fft=False):
-        """This is a simulation unit for one q-vector.
+    def _simulation_unit(self, points, normals,
+                         dl, curvature, T, freq, freq_square,
+                         q, q_square, device, save_fft=False):
+        """
+        This is a simulation unit for one q-vector.
 
         Parameters
         ----------
@@ -511,7 +514,6 @@ class Solver:
         dMRI_signal : (n_time,) torch.tensor
             the final dMRI signal
         """
-
         # initialize
         S_long = torch.zeros((self.n_points, self.n_time),
                              device=device, dtype=self.dtype)
@@ -530,7 +532,7 @@ class Solver:
             # compute mu
             mu = torch.empty((self.n_points, self.n_time),
                              device=device, dtype=self.dtype)
-            mu[:, t1] = self.fun_t1(neumann, curvature, T[:, t1])
+            mu[:, t1] = self._fun_t1(neumann, curvature, T[:, t1])
 
             # compute K_short and move it to cpu for saving memory
             K_short = - (torch.sqrt(self.D0*T[:, t1]/np.pi)
@@ -550,10 +552,10 @@ class Solver:
                 for it in t2:
                     for ifreq in freq_schedule:
                         fhat_temp, K_long_temp, S_long_temp = \
-                            self.fun_t2(it, fhat_last[:, ifreq],
-                                        freq[:, ifreq],
-                                        freq_square[:, ifreq], q, q_square,
-                                        points, normals, curvature, dl)
+                            self._fun_t2(it, fhat_last[:, ifreq],
+                                         freq[:, ifreq],
+                                         freq_square[:, ifreq], q, q_square,
+                                         points, normals, curvature, dl)
                         fhat_last[:, ifreq] = fhat_temp
                         K_long[:, it].add_(K_long_temp)
                         S_long[:, it].add_(S_long_temp)
@@ -565,9 +567,9 @@ class Solver:
                 fourier_bases = torch.exp(-self._2pij*freq.t() @ points)
                 for it in t2:
                     fhat_last, K_long[:, it], S_long[:, it] = \
-                        self.fun_t2(it, fhat_last, freq, freq_square, q,
-                                    q_square, points, normals, curvature, dl,
-                                    fourier_bases=fourier_bases)
+                        self._fun_t2(it, fhat_last, freq, freq_square, q,
+                                     q_square, points, normals, curvature, dl,
+                                     fourier_bases=fourier_bases)
                     if save_fft:
                         raise NotImplementedError('Cannot save fft.')
                         # TODO
@@ -579,7 +581,7 @@ class Solver:
             D0_curva = np.sqrt(self.D0*self.eta/np.pi) * \
                 curvature.reshape((-1, 1))
 
-            mu[:, t1] = self.fun_t1(neumann, curvature, T[:, t1])
+            mu[:, t1] = self._fun_t1(neumann, curvature, T[:, t1])
             mu[:, t2] = (neumann(T[:, t2]) - K_long[:, t2])/((1 - D0_curva)/2)
 
             # K_long is no longer used, move it to cpu for saving memory
@@ -603,10 +605,10 @@ class Solver:
                 for it in t2:
                     for ifreq in freq_schedule:
                         fhat_temp, K_long_temp, S_long_temp = \
-                            self.fun_t2(it, fhat_last[:, ifreq],
-                                        freq[:, ifreq],
-                                        freq_square[:, ifreq], q, q_square,
-                                        points, normals, curvature, dl)
+                            self._fun_t2(it, fhat_last[:, ifreq],
+                                         freq[:, ifreq],
+                                         freq_square[:, ifreq], q, q_square,
+                                         points, normals, curvature, dl)
                         fhat_last[:, ifreq] = fhat_temp
                         K_long[:, it].add_(K_long_temp)
                         S_long[:, it].add_(S_long_temp)
@@ -618,9 +620,9 @@ class Solver:
                 fourier_bases = torch.exp(-self._2pij*freq.t() @ points)
                 for it in t2:
                     fhat_last, K_long[:, it], S_long[:, it] = \
-                        self.fun_t2(it, fhat_last, freq, freq_square, q,
-                                    q_square, points, normals, curvature, dl,
-                                    fourier_bases=fourier_bases)
+                        self._fun_t2(it, fhat_last, freq, freq_square, q,
+                                     q_square, points, normals, curvature, dl,
+                                     fourier_bases=fourier_bases)
                     if save_fft:
                         raise NotImplementedError('Cannot save fft.')
                         # TODO
@@ -634,7 +636,7 @@ class Solver:
                 for it in t3:
                     for ifreq in freq_schedule:
                         fhat_temp, K_long_temp, S_long_temp = \
-                            self.fun_t3(
+                            self._fun_t3(
                                 K_long[:, it-self.n_eta-1:it-self.n_eta+1].t(),
                                 it, fhat_last[:, ifreq], freq[:, ifreq],
                                 freq_square[:, ifreq], q, q_square,
@@ -650,7 +652,7 @@ class Solver:
                 fourier_bases = torch.exp(-self._2pij*freq.t() @ points)
                 for it in t3:
                     fhat_last, K_long[:, it], S_long[:, it] = \
-                        self.fun_t3(
+                        self._fun_t3(
                             K_long[:, it-self.n_eta-1:it-self.n_eta+1].t(),
                             it, fhat_last, freq, freq_square, q,
                             q_square, points, normals, curvature, dl,
@@ -667,7 +669,7 @@ class Solver:
             D0_curva = np.sqrt(self.D0*self.eta/np.pi) * \
                 curvature.reshape((-1, 1))
 
-            mu[:, t1] = self.fun_t1(neumann, curvature, T[:, t1])
+            mu[:, t1] = self._fun_t1(neumann, curvature, T[:, t1])
             mu[:, t23] = (neumann(T[:, t23]) - K_long[:, t23]) / \
                 ((1 - D0_curva)/2)
 
@@ -696,8 +698,8 @@ class Solver:
         S_short = S_short.cpu()
         S_long = S_long.cpu()
         # compute the dMRI signal
-        omega_bar, dMRI_signal = self.fun_dMRI_signal(omega, q, q_square,
-                                                      points, normals, dl, T)
+        omega_bar, dMRI_signal = self._fun_dMRI_signal(omega, q, q_square,
+                                                       points, normals, dl, T)
 
         return (mu,
                 S_short,
@@ -709,7 +711,8 @@ class Solver:
                 dMRI_signal.cpu())
 
     def _set_freq_schedule(self, device=torch.device("cpu"), r=25):
-        """Make a schedule for computing the spectrum.
+        """
+        Make a schedule for computing the spectrum.
 
         The computation of the whole spectrum needs enormous memory.
         Luckily, the computation at one frequency point is independent
@@ -731,7 +734,6 @@ class Solver:
             a list contaning the index of the frequency points
             in each spectrum block.
         """
-
         # get available memory in the device
         if device == torch.device("cpu"):
             mem_available = psutil.virtual_memory().available
@@ -756,7 +758,8 @@ class Solver:
         return schedule
 
     def _neumann(self, points, normals, q, q_square, t_val):
-        """The Neumann boundary condition.
+        """
+        The Neumann boundary condition.
 
         .. math::
             \\mathcal{N}(\\textbf{x}, t, \\textbf{q}) =
@@ -783,7 +786,6 @@ class Solver:
         neumann : (n_points, n_t) ndarray[complex]
             the density funciton :math:`\\mu` defined on the boundary
         """
-
         # xq.shape: (n_points, 1)
         xq = self._2pij*self.rho*((normals.t() @ q) *
                                   torch.exp(-self._2pij*points.t()@q))
@@ -792,8 +794,9 @@ class Solver:
 
         return xq @ qt
 
-    def fun_t1(self, neumann, curvature, T):
-        """Computation of the density function :math:`\\mu`
+    def _fun_t1(self, neumann, curvature, T):
+        """
+        Computation of the density function :math:`\\mu`
         for the first time interval :math:`[0, \\eta]`.
 
         This function corresponds to the Algorithm 2 in the paper.
@@ -816,9 +819,10 @@ class Solver:
         return 2 * neumann(T) / (1 - curvature.t() @
                                  torch.sqrt(self.D0 * T/np.pi))
 
-    def fun_t2(self, it, fhat_last, freq, freq_square, q, q_square,
-               points, normals, curvature, dl, fourier_bases=None):
-        """Computation of the density function :math:`\\mu`,
+    def _fun_t2(self, it, fhat_last, freq, freq_square, q, q_square,
+                points, normals, curvature, dl, fourier_bases=None):
+        """
+        Computation of the density function :math:`\\mu`,
         the Fourier coefficients :math:`\\hat{f}`,
         and the long time parts :math:`K_{long}`, :math:`S_{long}`
         for the timepoint it*dt
@@ -867,7 +871,6 @@ class Solver:
             the long time part :math:`S_{long}`
             at the current (it-th) time step
         """
-
         # matrix of Fourier bases exp(-2*pi*j*freq*x)
         # (n_freq, n_points)
         if fourier_bases is None:
@@ -897,7 +900,8 @@ class Solver:
 
     def _fhat_temp1(self, t, fourier_bases, freq_square, q, q_square,
                     points, normals, curvature, dl):
-        """Compute the Fourier coefficients
+        """
+        Compute the Fourier coefficients
         :math:`\\hat{f}_{temp1}` at timepoint :math:`t`.
 
         This function corresponds to the Function fhat_temp1 in the paper.
@@ -929,7 +933,6 @@ class Solver:
         fhat_temp1 : (1, n_freq) torch.tensor[complex]
             Fourier coefficient
         """
-
         # coefficients related to normal vectors on the boundary
         # (1, n_points)
         normal_coef = (2*self.rho*self._2pij*q.t() @ normals) * \
@@ -944,7 +947,8 @@ class Solver:
         return (integrand@dl.t()).reshape((1, -1))
 
     def _p(self, t, curvature, freq_square, q_square):
-        """The time integration within the integral :math:`\\hat{f}_{temp1}`.
+        """
+        The time integration within the integral :math:`\\hat{f}_{temp1}`.
 
         This function corresponds to the Function :math:`p` in the paper.
 
@@ -964,7 +968,6 @@ class Solver:
         p : (n_freq, n_points) torch.tensor[complex]
             integration values
         """
-
         # weights [n_freq x 1]
         a = self.dt*self._4pis*self.D0*(q_square-freq_square.t())
         p_weights1 = (1+(a-1)*torch.exp(a))/a.pow(2)
@@ -1003,16 +1006,17 @@ class Solver:
 
         return intg
 
-    def fun_t3(self, K_long, it, fhat_last, freq, freq_square, q, q_square,
-               points, normals, curvature, dl, fourier_bases=None):
-        """Computation of the density function :math:`\\mu`,
+    def _fun_t3(self, K_long, it, fhat_last, freq, freq_square, q, q_square,
+                points, normals, curvature, dl, fourier_bases=None):
+        """
+        Computation of the density function :math:`\\mu`,
         the Fourier coefficients :math:`\\hat{f}`,
         and the long time parts :math:`K_{long}`, :math:`S_{long}`
         for the timepoint it*dt
         in the third time interval
         :math:`T3 = [2\\eta + \\Delta t, \\Delta-\\delta] (\\mu s)`.
 
-        This mainly corresponds to the Algorithm 4 in the paper.
+        This function mainly corresponds to the Algorithm 4 in the paper.
 
         Parameters
         ----------
@@ -1054,7 +1058,6 @@ class Solver:
             the long time part :math:`S_{long}`
             at the current (it-th) time step
         """
-
         # matrix of Fourier bases exp(-2*pi*j*freq*x)  [n_freq x n_points]
         if fourier_bases is None:
             fourier_bases = torch.exp(-self._2pij*freq.t() @ points)
@@ -1082,7 +1085,8 @@ class Solver:
 
     def _fhat_temp2(self, t, K_long, fourier_bases, freq_square, q, q_square,
                     points, normals, curvature, dl):
-        """Compute the Fourier coefficients :math:`\\hat{f}_{temp2}`
+        """
+        Compute the Fourier coefficients :math:`\\hat{f}_{temp2}`
         at timepoint :math:`t`.
 
         This function corresponds to the Function fhat_temp2 in the paper.
@@ -1114,7 +1118,6 @@ class Solver:
         fhat_temp2 : (1, n_freq) torch.tensor[complex]
             Fourier coefficient
         """
-
         # coefficients related to normal vectors on the boundary [1 x n_points]
         normal_coef = (self._2pij*self.rho*q.t() @ normals) * \
             torch.exp(-self._2pij*q.t() @ points)
@@ -1133,8 +1136,8 @@ class Solver:
         return (integrand@dl.t()).reshape((1, -1))
 
     def _h1(self, t, freq_square, q_square):
-        """The first time integration within
-        the integral :math:`\\hat{f}_{temp2}`.
+        """
+        The first time integration within the integral :math:`\\hat{f}_{temp2}`.
 
         This function corresponds to the Function :math:`h1` in the paper.
 
@@ -1152,7 +1155,6 @@ class Solver:
         h1 : (1, n_freq) torch.tensor[complex]
             integration values
         """
-
         a = self._4pis*self.D0*(q_square-freq_square)*self.dt
         mask = torch.abs(a) < 1e-5
         h1 = (torch.exp(a) - 1)/a
@@ -1169,8 +1171,8 @@ class Solver:
         return h1*self.dt
 
     def _h2(self, freq_square, K_long):
-        """The second time integration within
-        the integral :math:`\\hat{f}_{temp2}`.
+        """
+        The second time integration within the integral :math:`\\hat{f}_{temp2}`.
 
         This function corresponds to the Function :math:`h2` in the paper.
 
@@ -1187,7 +1189,6 @@ class Solver:
         h2 : (n_freq, n_points) torch.tensor[complex]
             integration values
         """
-
         # h2_weights  [2 x n_freq]
         a = self._4pis*self.D0*freq_square.reshape(-1)*self.dt
         h2_weights1 = (1 - torch.exp(-a)*(a + 1))/a.pow(2)
@@ -1207,9 +1208,9 @@ class Solver:
 
         return h2_weights.t() @ K_long
 
-    def fun_dMRI_signal(self, omega, q, q_square, points, normals, dl, T):
-        """Computation of the :math:`\\overline{\\omega}`
-        and diffusion MRI signal.
+    def _fun_dMRI_signal(self, omega, q, q_square, points, normals, dl, T):
+        """
+        Computation of the :math:`\\overline{\\omega}` and diffusion MRI signal.
 
         This function corresponds to the Algorithm 6 in the paper.
 
@@ -1239,7 +1240,6 @@ class Solver:
         dMRI_signal : (n_time,) torch.tensor[complex]
             diffusion MRI signal
         """
-
         # initilize omega_bar
         omega_bar = torch.zeros(
             self.n_time, device=dl.device, dtype=self.dtype)
@@ -1259,8 +1259,8 @@ class Solver:
         return omega_bar, dMRI_signal
 
     def _omega_bar_temp(self, omega, q, q_square, points, normals, dl):
-        """Computation of the updating term
-        :math:`\\overline{\\omega}_{temp}`.
+        """
+        Computation of the updating term :math:`\\overline{\\omega}_{temp}`.
 
         This function corresponds to the Function omega_bar_temp in the paper.
 
@@ -1285,7 +1285,6 @@ class Solver:
         omega_bar_temp : (n_time,) torch.tensor[complex]
             :math:`\\overline{\\omega}_{temp}`
         """
-
         # coefficients related to normal vectors on the boundary
         normal_coef = ((self._2pij*q.t()) @ normals) * \
             torch.exp((self._2pij*q.t()) @ points)
@@ -1296,7 +1295,8 @@ class Solver:
         return (dl@integrand).reshape(-1)
 
     def _u(self, omega, q_square):
-        """Computation of the time integration :math:`u`.
+        """
+        Computation of the time integration :math:`u`.
 
         This function corresponds to the Function u in the paper.
 
@@ -1313,7 +1313,6 @@ class Solver:
         u : (n_time,) torch.tensor[complex]
             integration values
         """
-
         # init
         u = torch.zeros_like(omega)
 
@@ -1332,6 +1331,7 @@ class Solver:
         return u*self.dt
 
     def __str__(self):
+        """Simulation information."""
         s = 'Solving narrow-pulsed Bloch-Torrey PDE '
         s += 'using layer potentials and Fourier transform.\n'
         if self.has_run():
@@ -1371,11 +1371,13 @@ class Solver:
         s += 'Individual info of models. Make sure geometries do not overlap.\n'
         for m in self.geom:
             s += f'{m}\n'
+
         return s
 
 
 def q2b_PGSE(q_norm, sdelta, bdelta):
-    """Convert q to b.
+    """
+    Convert q to b.
 
     .. math::
         b = 4 \\pi^2 q^2 (\\Delta - \\delta/3)
@@ -1398,7 +1400,8 @@ def q2b_PGSE(q_norm, sdelta, bdelta):
 
 
 def b2q_PGSE(b, sdelta, bdelta, direction):
-    """Convert b to q.
+    """
+    Convert b to q.
 
     .. math::
         \\|q\\| = \\dfrac{1}{2\\pi} \\sqrt{\\dfrac{b}{\\Delta - \\delta/3}}
@@ -1419,7 +1422,6 @@ def b2q_PGSE(b, sdelta, bdelta, direction):
     (2, n) ndarray
         q-vectors
     """
-
     # compute q norm
     q_norm = np.sqrt(b/(bdelta-sdelta/3))/(2*np.pi)
 
@@ -1434,7 +1436,8 @@ def b2q_PGSE(b, sdelta, bdelta, direction):
 
 
 def is_direction(arr):
-    """Is ``arr`` a list of directions?
+    """
+    Is ``arr`` a list of directions?
 
     Examples
     --------
@@ -1443,7 +1446,6 @@ def is_direction(arr):
     True
 
     """
-
     if (len(arr.shape) != 2) or (arr.shape[0] != 2):
         return False
     else:
@@ -1451,7 +1453,8 @@ def is_direction(arr):
 
 
 def dir_semicircle(n):
-    """Create points evenly distributed on the unit semicircle.
+    """
+    Create points evenly distributed on the unit semicircle.
 
     Parameters
     ----------
@@ -1468,7 +1471,6 @@ def dir_semicircle(n):
     ValueError
         negative number of points
     """
-
     if n <= 0:
         raise ValueError('n should be a positive integer (>0).')
     else:
@@ -1480,7 +1482,8 @@ def dir_semicircle(n):
 
 
 def get_dtype_size(dtype):
-    """Get element size of a certain data type.
+    """
+    Get element size of a certain data type.
 
     Examples
     --------
@@ -1493,7 +1496,6 @@ def get_dtype_size(dtype):
 
 def res_stack(res_list):
     """Stack results."""
-
     result = [None] * 8
     for i in range(8):
         result[i] = torch.stack([res[i] for res in res_list])
@@ -1502,7 +1504,8 @@ def res_stack(res_list):
 
 
 def save(*arg, **kwarg):
-    """Call ``torch.save``.
+    """
+    Call ``torch.save``.
 
     More on `torch.save`_.
 
@@ -1520,7 +1523,8 @@ def save(*arg, **kwarg):
 
 
 def load(*arg, **kwarg):
-    """Call ``torch.load``.
+    """
+    Call ``torch.load``.
 
     More on `torch.load`_.
 

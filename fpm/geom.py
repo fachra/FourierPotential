@@ -7,9 +7,11 @@ import matplotlib.pyplot as plt
 import alphashape
 import trimesh
 import shapely
+from .utils import isnumeric, isint
 
 
 class Ellipse:
+
     """Class of ellipses.
 
     If rotation angle is zero,
@@ -26,7 +28,7 @@ class Ellipse:
     center_y : float
         y-coordinate of the ellipse center
     a : float
-        lenght of the semi-major axis
+        length of the semi-major axis
     b : float
         length of the semi-minor axis
     n_points : int, optional
@@ -61,10 +63,39 @@ class Ellipse:
                  dist_max=None,
                  rotate_angle=0,
                  refine=True) -> None:
+        # input check
+        if not isnumeric(center_x):
+            raise ValueError(f"Ellipse: 'center_x' is not a number.")
+        if not isnumeric(center_y):
+            raise ValueError(f"Ellipse: 'center_y' is not a number.")
+        if not isnumeric(a):
+            raise ValueError(
+                f"Ellipse: length of the semi-major axis, 'a', is not a number.")
+        if not isnumeric(b):
+            raise ValueError(
+                f"Ellipse: length of the semi-minor axis, 'b', is not a number.")
+        if not isint(n_points):
+            raise ValueError(f"Ellipse: 'n_points' is not an integer.")
+        if (dist_max is not None) and (not isnumeric(dist_max)):
+            raise ValueError(f"Ellipse: 'dist_max' is not a number.")
+        if not isnumeric(rotate_angle):
+            raise ValueError(f"Ellipse: 'rotate_angle' is not a number.")
+        if a <= 0:
+            raise ValueError(
+                f"Ellipse: length of the semi-major axis, 'a', is negative.")
+        if b <= 0:
+            raise ValueError(
+                f"Ellipse: length of the semi-minor axis, 'b', is negative.")
+        if n_points < 3:
+            raise ValueError(f"Ellipse: 'n_points' is less than 3.")
+        if (dist_max is not None) and (dist_max <= 0):
+            raise ValueError(f"Ellipse: 'dist_max' is negative.")
+
         # get parameters
         self.center_x = center_x
         self.center_y = center_y
         self.a, self.b = a, b
+        self.shift = np.array([[center_x], [center_y]])
 
         # get number of points
         if dist_max is None:
@@ -92,17 +123,16 @@ class Ellipse:
         self.dl = self._dl()
 
         # rotate the ellipse
-        self.rotate_angle = rotate_angle*np.pi/180
+        self.rotate_angle = rotate_angle
         if self.rotate_angle != 0:
             self._rotate()
 
         return None
 
-    def plot(self) -> None:
+    def plot(self):
         """Plot ellipse and normal vectors."""
-
         # plot ellipse
-        plt.plot(self.points[0, :], self.points[1, :], 'b--')
+        h = plt.plot(self.points[0, :], self.points[1, :], 'b--')
 
         # plot normal vectors
         plt.quiver(self.points[0, :], self.points[1, :],
@@ -110,11 +140,12 @@ class Ellipse:
         plt.axis('equal')
         plt.show()
 
-        return None
+        return h
 
     @property
     def perimeter(self):
-        """Ellipse perimeter.
+        """
+        Ellipse perimeter.
 
         The perimeter is approximated using
         `Gauss-Kummer Series
@@ -125,7 +156,6 @@ class Ellipse:
         float
             the 8th-order approximate perimeter
         """
-
         h = (self.a-self.b)**2/(self.a+self.b)**2
 
         return np.pi*(self.a+self.b)*(1 + h/4 + h**2/64 + h**3/256 +
@@ -134,32 +164,33 @@ class Ellipse:
 
     @property
     def area(self):
-        """Ellipse area.
+        """
+        Ellipse area.
 
         Returns
         -------
         float
             ellipse area
         """
-
         return np.pi*self.a*self.b
 
     def _create_points(self):
-        """Sample points on the ellipse boundary.
+        """
+        Sample points on the ellipse boundary.
 
         Returns
         -------
         (2, n_points) ndarray
             coordinates of points
         """
+        x = self.a*np.cos(2*np.pi*self._theta)
+        y = self.b*np.sin(2*np.pi*self._theta)
 
-        x = self.a*np.cos(2*np.pi*self._theta) + self.center_x
-        y = self.b*np.sin(2*np.pi*self._theta) + self.center_y
-
-        return np.vstack((x, y))
+        return np.vstack((x, y)) + self.shift
 
     def _compute_curvature(self):
-        """Compute ellipse curvature.
+        """
+        Compute ellipse curvature.
 
         According to
         `Wikipedia <https://en.wikipedia.org/wiki/Ellipse#Curvature>`_,
@@ -175,7 +206,6 @@ class Ellipse:
         (n_points,) ndarray
             curvature
         """
-
         x = self.points[0, :]
         y = self.points[1, :]
 
@@ -183,7 +213,8 @@ class Ellipse:
                                 (self.b*(x-self.center_x)/self.a)**2)**(3/2)
 
     def _compute_normals(self):
-        """Compute outward pointing unit normal vectors
+        """
+        Compute outward pointing unit normal vectors
         on the ellipse boundary.
 
         Reference to the
@@ -194,14 +225,15 @@ class Ellipse:
         (2, n_points) ndarray
             normal vectors
         """
-
         denom = np.array([self.a**2, self.b**2]).reshape((2, 1))
-        normals = 2 * self.points / denom
+        points = self.points - self.shift
+        normals = 2 * points / denom
 
         return normals/np.linalg.norm(normals, axis=0)
 
     def _dl(self):
-        """Compute length of edges.
+        """
+        Compute length of edges.
 
         The edges are centers on ``points``.
 
@@ -210,37 +242,38 @@ class Ellipse:
         (n_points,) ndarray
             edge lengths
         """
-
         diff_pts = self.points - np.c_[self.points[:, 1:], self.points[:, 0:1]]
         dl = np.linalg.norm(diff_pts, axis=0)
+
         return ((dl + np.r_[dl[-1], dl[0:-1]])/2)
 
     def _rotate(self):
-        """Rotate the ellipse and return the rotation matrix.
+        """
+        Rotate the ellipse and return the rotation matrix.
 
         Returns
         -------
         (2, 2) ndarray
             rotation matrix
         """
-
         # compute rotation matrix
         # https://en.wikipedia.org/wiki/Rotation_matrix#In_two_dimensions
-        c, s = np.cos(self.rotate_angle), np.sin(self.rotate_angle)
+        angle = self.rotate_angle*np.pi/180
+        c, s = np.cos(angle), np.sin(angle)
         R = np.array([[c, -s], [s, c]])
 
-        self.points = R @ self.points
+        self.points = R @ (self.points - self.shift) + self.shift
         self.normals = R @ self.normals
 
         return R
 
     def _refine(self) -> None:
-        """Refine the disretization of the ellipse.
+        """
+        Refine the disretization of the ellipse.
 
         Strategy of refinement: add more points to the region
         whose curvature is high.
         """
-
         # compute curvature distribution
         curva_abs = np.abs(self.curvature)
         curva_ratio = np.rint(
@@ -287,9 +320,11 @@ class Ellipse:
         return None
 
     def __len__(self):
+        """Number of points."""
         return self.n_points
 
     def __repr__(self):
+        """Ellipse information."""
         s = (f'<Ellipse>: center_x = {self.center_x},\n'
              f'           center_y = {self.center_y},\n'
              f'           a = {self.a}, b = {self.b},\n'
@@ -299,16 +334,18 @@ class Ellipse:
         return s
 
     def __str__(self):
+        """Ellipse information."""
         s = ('An ellipse with\n'
              f'    a = {self.a}, b = {self.b},\n'
              f'    centered at ({self.center_x}, {self.center_y}),\n'
-             f'    rotated {self.rotate_angle*180/np.pi} degrees\n'
+             f'    rotated {self.rotate_angle} degrees\n'
              '    in anticlockwise direction.')
 
         return s
 
 
 class Circle(Ellipse):
+
     """Class of circles.
 
     Parameters
@@ -332,6 +369,24 @@ class Circle(Ellipse):
                  r,
                  n_points=300,
                  dist_max=None) -> None:
+        # input check
+        if not isnumeric(center_x):
+            raise ValueError(f"Circle: 'center_x' is not a number.")
+        if not isnumeric(center_y):
+            raise ValueError(f"Circle: 'center_y' is not a number.")
+        if not isnumeric(r):
+            raise ValueError(f"Circle: radius 'r' is not a number.")
+        if not isint(n_points):
+            raise ValueError(f"Circle: 'n_points' is not an integer.")
+        if (dist_max is not None) and (not isnumeric(dist_max)):
+            raise ValueError(f"Circle: 'dist_max' is not a number.")
+        if r <= 0:
+            raise ValueError(f"Circle: radius 'r' is negative.")
+        if n_points < 3:
+            raise ValueError(f"Circle: 'n_points' is less than 3.")
+        if (dist_max is not None) and (dist_max <= 0):
+            raise ValueError(f"Circle: 'dist_max' is negative.")
+
         # initialize parent class
         super().__init__(center_x,
                          center_y,
@@ -345,8 +400,8 @@ class Circle(Ellipse):
 
         return None
 
-
     def __repr__(self):
+        """Circle information."""
         s = (f'<Circle(Ellipse)>: center_x = {self.center_x},\n'
              f'                   center_y = {self.center_y},\n'
              f'                   r = {self.a},\n'
@@ -355,6 +410,7 @@ class Circle(Ellipse):
         return s
 
     def __str__(self):
+        """Circle information."""
         s = ('A circle with\n'
              f'    radius = {self.r},\n'
              f'    centered at ({self.center_x}, {self.center_y}).')
@@ -362,8 +418,9 @@ class Circle(Ellipse):
         return s
 
 
-class Shape2D:
-    """Class for closed 2D shapes.
+class Shape:
+
+    """Class for 2D shapes.
 
     Parameters
     ----------
@@ -411,6 +468,19 @@ class Shape2D:
                  y_shift=0,
                  rotate_angle=0,
                  refine=True):
+        # input check
+        if n_points is not None:
+            if not isint(n_points):
+                raise ValueError("'n_points' is not integer.")
+            elif n_points <= 0:
+                raise ValueError("'n_points' is negative.")
+
+        if dist_max is not None:
+            if not isnumeric(dist_max):
+                raise ValueError("'dist_max' is not a number.")
+            elif dist_max <= 0:
+                raise ValueError("'dist_max' is negative.")
+
         # get point clouds
         # model type: Polygon
         if isinstance(model, shapely.geometry.Polygon):
@@ -453,6 +523,11 @@ class Shape2D:
         else:
             self.n_points = points.shape[1]
 
+        # get shift
+        self.x_shift = x_shift
+        self.y_shift = y_shift
+        self.shift = np.array([[x_shift], [y_shift]])
+
         # parameterize shape contour using ``u``
         self.u = np.linspace(
             self._u.min(), self._u.max(), self.n_points, endpoint=False)
@@ -465,24 +540,23 @@ class Shape2D:
             self._refine()
 
         # recompute points and normal vectors
-        self.points = self._create_points(x_shift, y_shift)
+        self.points = self._create_points()
         self.normals = self._compute_normals()
 
         # compute length of edges
         self.dl = self._dl()
 
         # rotate the 2D shape
-        self.rotate_angle = rotate_angle*np.pi/180
+        self.rotate_angle = rotate_angle
         if self.rotate_angle != 0:
             self._rotate()
 
         return None
 
-    def plot(self) -> None:
+    def plot(self):
         """Plot the 2D shape and normal vectors."""
-
         # plot shape
-        plt.plot(self.points[0, :], self.points[1, :], 'b--')
+        h = plt.plot(self.points[0, :], self.points[1, :], 'b--')
 
         # plot normal vectors
         plt.quiver(self.points[0, :], self.points[1, :],
@@ -490,18 +564,18 @@ class Shape2D:
         plt.axis('equal')
         plt.show()
 
-        return None
+        return h
 
     @property
     def perimeter(self):
-        """Perimeter of shape contour.
+        """
+        Perimeter of shape contour.
 
         The perimeter is calculated by `integrating the arc lengths`_.
 
         .. _integrating the arc lengths:
             https://en.wikipedia.org/wiki/Arc_length#Finding_arc_lengths_by_integrating
         """
-
         # compute arc length
         def len_func(u, tck):
             x_prime, y_prime = splev(u, tck, der=1)
@@ -515,14 +589,14 @@ class Shape2D:
 
     @property
     def area(self):
-        """Shape area.
+        """
+        Shape area.
 
         Shape area is calculated by using the `Green's theorem`_.
 
         .. _Green's theorem:
             https://mathworld.wolfram.com/GreensTheorem.html#eqn4
         """
-
         # define integrand
         def area_func(u, tck):
             x, y = splev(u, tck, der=0)
@@ -535,28 +609,22 @@ class Shape2D:
 
         return a
 
-    def _create_points(self, x_shift, y_shift):
-        """Sample points on the shape contour.
-
-        Parameters
-        ----------
-        x_shift : float
-            translation distance on the x-axis
-        y_shift : float
-            translation distance on the y-axis
+    def _create_points(self):
+        """
+        Sample points on the shape contour.
 
         Returns
         -------
         (2, n_points) ndarray
             coordinates of points
         """
-
         x, y = splev(self.u, self._tck, der=0)
 
-        return np.vstack((x+x_shift, y+y_shift))
+        return np.vstack((x, y)) + self.shift
 
     def _compute_curvature(self):
-        """Compute curvature of a arbitrary 2D contour.
+        """
+        Compute curvature of a arbitrary 2D contour.
 
         According to
         `this`_,
@@ -574,15 +642,14 @@ class Shape2D:
         (n_points,) ndarray
             curvature
         """
-
         x_deri1, y_deri1 = splev(self.u, self._tck, der=1)
         x_deri2, y_deri2 = splev(self.u, self._tck, der=2)
 
         return (x_deri1*y_deri2-x_deri2*y_deri1)/(x_deri1**2+y_deri1**2)**(3/2)
 
     def _compute_normals(self):
-        """Compute outward pointing unit normal vectors
-        on the shape contour.
+        """
+        Compute outward pointing unit normal vectors on the shape contour.
 
         The normal vectors are perpendicular to the tangent vectors.
 
@@ -591,14 +658,14 @@ class Shape2D:
         (2, n_points) ndarray
             normal vectors
         """
-
         x_deri1, y_deri1 = splev(self.u, self._tck, der=1)
         normals = np.vstack((y_deri1, -x_deri1))
 
         return normals/np.linalg.norm(normals, axis=0)
 
     def _dl(self):
-        """Compute length of edges.
+        """
+        Compute length of edges.
 
         The edges are centers on ``points``.
 
@@ -607,37 +674,37 @@ class Shape2D:
         (n_points,) ndarray
             edge lengths
         """
-
         diff_pts = self.points - np.c_[self.points[:, 1:], self.points[:, 0:1]]
         dl = np.linalg.norm(diff_pts, axis=0)
         return (dl + np.r_[dl[-1], dl[0:-1]])/2
 
     def _rotate(self):
-        """Rotate the shape and return the rotation matrix.
+        """
+        Rotate the shape and return the rotation matrix.
 
         Returns
         -------
         (2, 2) ndarray
             rotation matrix
         """
-
         # compute rotation matrix
         # https://en.wikipedia.org/wiki/Rotation_matrix#In_two_dimensions
-        c, s = np.cos(self.rotate_angle), np.sin(self.rotate_angle)
+        angle = self.rotate_angle*np.pi/180
+        c, s = np.cos(angle), np.sin(angle)
         R = np.array([[c, -s], [s, c]])
 
-        self.points = R @ self.points
+        self.points = R @ (self.points - self.shift) + self.shift
         self.normals = R @ self.normals
 
         return R
 
     def _refine(self) -> None:
-        """Refine the disretization of the ellipse.
+        """
+        Refine the disretization of the ellipse.
 
         Strategy of refinement: add more points to the region
         whose curvature is high.
         """
-
         # compute curvature distribution
         curva_abs = np.abs(self.curvature)
         curva_ratio = np.rint(
@@ -681,9 +748,11 @@ class Shape2D:
         return None
 
     def __len__(self):
+        """Number of points."""
         return self.n_points
 
     def __repr__(self):
+        """2D model information."""
         s = (f'<Model2d>: n_points = {self.n_points},\n'
              f'           perimeter = {self.perimeter:.2f},\n'
              f'           area = {self.area:.2f}.')
@@ -691,6 +760,7 @@ class Shape2D:
         return s
 
     def __str__(self):
+        """2D model information."""
         s = ('An imported model with\n'
              f'    perimeter = {self.perimeter:.2f},\n'
              f'    area = {self.area:.2f},\n'
@@ -700,8 +770,9 @@ class Shape2D:
         return s
 
 
-def stl_3Dto2D(stl_path, projection='best', remesh_size=1, alpha=1.5):
-    """Convert a 3D STL surface mesh to a 2D alphashape.
+def project_stl(stl_path, projection='best', remesh_size=1, alpha=1.5):
+    """
+    Project a 3D STL surface mesh onto a plane to form a 2D domain.
 
     Parameters
     ----------
@@ -719,19 +790,23 @@ def stl_3Dto2D(stl_path, projection='best', remesh_size=1, alpha=1.5):
     ``shapely.geometry.Polygon``
         the resulting geometry
     """
-
     # load 3D model
     mymesh = trimesh.load_mesh(stl_path)
 
     # refine model (mandatory)
+    if remesh_size <= 0:
+        raise ValueError("'remesh_size' is negative.")
     vertices, _ = trimesh.remesh.subdivide_to_size(
         mymesh.vertices, mymesh.faces, remesh_size)
 
     # get projection direction
-    if projection == 'best':
+    if isinstance(projection, (list, tuple, np.ndarray)) and len(projection) == 3:
+        projection = np.array(projection, dtype=float).reshape(-1)
+        center = vertices.mean(axis=0)
+    elif isinstance(projection, str) and projection == 'best':
         center, projection = trimesh.points.plane_fit(vertices)
     else:
-        center = vertices.mean(axis=0)
+        raise ValueError(f"Unknown parameter 'projection'={projection}.")
 
     # project 3D model to the plane
     points = trimesh.points.project_to_plane(
@@ -742,7 +817,8 @@ def stl_3Dto2D(stl_path, projection='best', remesh_size=1, alpha=1.5):
 
 
 def is_clockwise(P1):
-    """Determine the winding order of a set of ordered points ``P1``.
+    """
+    Determine the winding order of a set of ordered points ``P1``.
 
     Reference to the `blog`_ and the `post`_.
 
@@ -762,6 +838,6 @@ def is_clockwise(P1):
     bool
         True, if P1 is clockwisely ordered
     """
-
     P2 = np.c_[P1[:, 1:], P1[:, 0:1]]
+
     return np.sum((P2[0, :] - P1[0, :])*(P2[1, :] + P1[1, :])) > 0

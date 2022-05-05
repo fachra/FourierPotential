@@ -1,11 +1,10 @@
-__all__ = ['Ellipse', 'Circle', 'Shape2D', 'stl_3Dto2D',
-           'Solver', 'save', 'load', '__version__']
+"""Fourier representation of the diffusion MRI signal using layer potentials."""
 
 from .geom import (
-    stl_3Dto2D,
+    project_stl,
     Ellipse,
     Circle,
-    Shape2D
+    Shape
 )
 
 from .core import (
@@ -15,3 +14,5 @@ from .core import (
 )
 
 from ._version import __version__
+
+from . import example

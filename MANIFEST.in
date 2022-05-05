@@ -1,0 +1,3 @@
+include README.md
+include fpm/data/*.stl
+include fpm/data/axons/*
