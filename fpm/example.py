@@ -1,6 +1,5 @@
-"""This module provides some geometry examples."""
+"""The module provides some geometry examples."""
 
-import os
 import numpy as np
 import pkg_resources as pkr
 
@@ -27,6 +26,5 @@ def plot_axons():
     img = mpimg.imread(filepath)
     imgplot = plt.imshow(img)
     plt.axis('off')
-    plt.show()
 
     return imgplot

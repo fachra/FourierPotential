@@ -9,4 +9,4 @@ def isnumeric(a):
 
 
 def isint(a):
-    return type(a) == int
+    return isinstance(a, int)

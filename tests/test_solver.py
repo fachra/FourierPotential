@@ -2,6 +2,7 @@ from fpm import Circle, Solver
 import numpy as np
 from numpy.testing import assert_almost_equal
 
+
 def test_simulation_on_one_circle():
     c = Circle(0, 0, 1, dist_max=0.1)
     parameters = {
@@ -24,7 +25,7 @@ def test_simulation_on_one_circle():
     sim = Solver(**parameters)
     sim.run()
     signal_fpm = sim.dMRI_signal[:, -1].real.numpy()
-    
+
     # reference signals from Matrix Formalism method
     signal_ref = np.array([3.137, 3.133])
     print(signal_ref)

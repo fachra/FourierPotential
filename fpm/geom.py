@@ -12,7 +12,8 @@ from .utils import isnumeric, isint
 
 class Ellipse:
 
-    """Class of ellipses.
+    """
+    Class of ellipses.
 
     If rotation angle is zero,
     the equation of the ellipse is:
@@ -65,31 +66,34 @@ class Ellipse:
                  refine=True) -> None:
         # input check
         if not isnumeric(center_x):
-            raise ValueError(f"Ellipse: 'center_x' is not a number.")
+            raise ValueError(f"Ellipse: center_x={center_x} is not a number.")
         if not isnumeric(center_y):
-            raise ValueError(f"Ellipse: 'center_y' is not a number.")
+            raise ValueError(f"Ellipse: center_y={center_y} is not a number.")
         if not isnumeric(a):
             raise ValueError(
-                f"Ellipse: length of the semi-major axis, 'a', is not a number.")
+                f"Ellipse: length of the semi-major axis, a={a}, is not a number.")
         if not isnumeric(b):
             raise ValueError(
-                f"Ellipse: length of the semi-minor axis, 'b', is not a number.")
+                f"Ellipse: length of the semi-minor axis, b={b}, is not a number.")
         if not isint(n_points):
-            raise ValueError(f"Ellipse: 'n_points' is not an integer.")
+            raise ValueError(
+                f"Ellipse: n_points={n_points} is not an integer.")
         if (dist_max is not None) and (not isnumeric(dist_max)):
-            raise ValueError(f"Ellipse: 'dist_max' is not a number.")
+            raise ValueError(f"Ellipse: dist_max={dist_max} is not a number.")
         if not isnumeric(rotate_angle):
-            raise ValueError(f"Ellipse: 'rotate_angle' is not a number.")
+            raise ValueError(
+                f"Ellipse: rotate_angle={rotate_angle} is not a number.")
         if a <= 0:
             raise ValueError(
-                f"Ellipse: length of the semi-major axis, 'a', is negative.")
+                f"Ellipse: length of the semi-major axis, a={a}, is negative or zero.")
         if b <= 0:
             raise ValueError(
-                f"Ellipse: length of the semi-minor axis, 'b', is negative.")
+                f"Ellipse: length of the semi-minor axis, b={b}, is negative or zero.")
         if n_points < 3:
-            raise ValueError(f"Ellipse: 'n_points' is less than 3.")
+            raise ValueError(f"Ellipse: n_points={n_points} is less than 3.")
         if (dist_max is not None) and (dist_max <= 0):
-            raise ValueError(f"Ellipse: 'dist_max' is negative.")
+            raise ValueError(
+                f"Ellipse: dist_max={dist_max} is negative or zero.")
 
         # get parameters
         self.center_x = center_x
@@ -116,7 +120,7 @@ class Ellipse:
         if refine:
             self._refine()
 
-        # get out-pointing unit normal vectors
+        # get out-pointing normal vectors
         self.normals = self._compute_normals()
 
         # compute length of edges
@@ -138,7 +142,6 @@ class Ellipse:
         plt.quiver(self.points[0, :], self.points[1, :],
                    self.normals[0, :], self.normals[1, :])
         plt.axis('equal')
-        plt.show()
 
         return h
 
@@ -176,7 +179,7 @@ class Ellipse:
 
     def _create_points(self):
         """
-        Sample points on the ellipse boundary.
+        Sample points on the ellipse.
 
         Returns
         -------
@@ -272,7 +275,7 @@ class Ellipse:
         Refine the disretization of the ellipse.
 
         Strategy of refinement: add more points to the region
-        whose curvature is high.
+        where the curvature is high.
         """
         # compute curvature distribution
         curva_abs = np.abs(self.curvature)
@@ -346,7 +349,8 @@ class Ellipse:
 
 class Circle(Ellipse):
 
-    """Class of circles.
+    """
+    Class of circles.
 
     Parameters
     ----------
@@ -371,21 +375,22 @@ class Circle(Ellipse):
                  dist_max=None) -> None:
         # input check
         if not isnumeric(center_x):
-            raise ValueError(f"Circle: 'center_x' is not a number.")
+            raise ValueError(f"Circle: center_x={center_x} is not a number.")
         if not isnumeric(center_y):
-            raise ValueError(f"Circle: 'center_y' is not a number.")
+            raise ValueError(f"Circle: center_y={center_y} is not a number.")
         if not isnumeric(r):
-            raise ValueError(f"Circle: radius 'r' is not a number.")
+            raise ValueError(f"Circle: r={r} is not a number.")
         if not isint(n_points):
-            raise ValueError(f"Circle: 'n_points' is not an integer.")
+            raise ValueError(f"Circle: n_points={n_points} is not an integer.")
         if (dist_max is not None) and (not isnumeric(dist_max)):
-            raise ValueError(f"Circle: 'dist_max' is not a number.")
+            raise ValueError(f"Circle: dist_max={dist_max} is not a number.")
         if r <= 0:
-            raise ValueError(f"Circle: radius 'r' is negative.")
+            raise ValueError(f"Circle: r={r} is negative or zero.")
         if n_points < 3:
-            raise ValueError(f"Circle: 'n_points' is less than 3.")
+            raise ValueError(f"Circle: n_points={n_points} is less than 3.")
         if (dist_max is not None) and (dist_max <= 0):
-            raise ValueError(f"Circle: 'dist_max' is negative.")
+            raise ValueError(
+                f"Circle: dist_max={dist_max} is negative or zero.")
 
         # initialize parent class
         super().__init__(center_x,
@@ -420,7 +425,8 @@ class Circle(Ellipse):
 
 class Shape:
 
-    """Class for 2D shapes.
+    """
+    Class for 2D shapes.
 
     Parameters
     ----------
@@ -471,15 +477,27 @@ class Shape:
         # input check
         if n_points is not None:
             if not isint(n_points):
-                raise ValueError("'n_points' is not integer.")
+                raise ValueError(f"Shape: n_points={n_points} is not integer.")
             elif n_points <= 0:
-                raise ValueError("'n_points' is negative.")
+                raise ValueError(
+                    f"Shape: n_points={n_points} is negative or zero.")
 
         if dist_max is not None:
             if not isnumeric(dist_max):
-                raise ValueError("'dist_max' is not a number.")
+                raise ValueError(
+                    f"Shape: dist_max={dist_max} is not a number.")
             elif dist_max <= 0:
-                raise ValueError("'dist_max' is negative.")
+                raise ValueError(f"Shape: dist_max={dist_max} is negative.")
+
+        if not isnumeric(x_shift):
+            raise ValueError(f"Shape: x_shift={x_shift} is not a number.")
+
+        if not isnumeric(y_shift):
+            raise ValueError(f"Shape: y_shift={y_shift} is not a number.")
+
+        if not isnumeric(rotate_angle):
+            raise ValueError(
+                f"Shape: rotate_angle={rotate_angle} is not a number.")
 
         # get point clouds
         # model type: Polygon
@@ -562,7 +580,6 @@ class Shape:
         plt.quiver(self.points[0, :], self.points[1, :],
                    self.normals[0, :], self.normals[1, :])
         plt.axis('equal')
-        plt.show()
 
         return h
 
@@ -755,7 +772,8 @@ class Shape:
         """2D model information."""
         s = (f'<Model2d>: n_points = {self.n_points},\n'
              f'           perimeter = {self.perimeter:.2f},\n'
-             f'           area = {self.area:.2f}.')
+             f'           area = {self.area:.2f},\n'
+             f'           rotate_angle = {self.rotate_angle}.')
 
         return s
 
@@ -765,6 +783,7 @@ class Shape:
              f'    perimeter = {self.perimeter:.2f},\n'
              f'    area = {self.area:.2f},\n'
              f'    n_points = {self.n_points},\n'
+             f'    rotated angle = {self.rotate_angle} degree,\n'
              f'    max_curvature = {np.max(self.curvature):.4f}.')
 
         return s

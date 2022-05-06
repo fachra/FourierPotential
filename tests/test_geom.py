@@ -5,62 +5,61 @@ from fpm.example import mesh, axon1, axon2
 from numpy.testing import assert_almost_equal
 
 
-"""Test class Circle."""
-
+# Test class Circle.
 
 def test_circle_center_x_is_not_numeric():
     with pytest.raises(ValueError):
-        Circle('10.2', 0, 1)
+        c = Circle('10.2', 0, 1)
 
 
 def test_circle_center_y_is_not_numeric():
     with pytest.raises(ValueError):
-        Circle(10.2, '0.0', 1)
+        c = Circle(10.2, '0.0', 1)
 
 
 def test_circle_radius_is_not_numeric():
     with pytest.raises(ValueError):
-        Circle(10.2, 0, '1')
+        c = Circle(10.2, 0, '1')
 
 
 def test_circle_positional_argument_missing_1():
     with pytest.raises(TypeError):
-        Circle()
+        c = Circle()
 
 
 def test_circle_positional_argument_missing_2():
     with pytest.raises(TypeError):
-        Circle(0, 0)
+        c = Circle(0, 0)
 
 
 def test_circle_radius_is_negative():
     with pytest.raises(ValueError):
-        Circle(10.2, 0, -1)
+        c = Circle(10.2, 0, -1)
 
 
 def test_circle_n_points_is_not_integer_1():
     with pytest.raises(ValueError):
-        Circle(0, 0, 1, n_points='10.2')
+        c = Circle(0, 0, 1, n_points='10.2')
 
 
 def test_circle_n_points_is_not_integer_2():
     with pytest.raises(ValueError):
-        Circle(0, 0, 1, n_points=10.2)
+        c = Circle(0, 0, 1, n_points=10.2)
 
 
 def test_circle_n_points_is_too_small():
     with pytest.raises(ValueError):
-        Circle(0, 0, 1, n_points=1)
+        c = Circle(0, 0, 1, n_points=1)
 
 
 def test_circle_maximum_distance_is_not_numeric():
     with pytest.raises(ValueError):
-        Circle(0, 0, 1, dist_max='0.002')
+        c = Circle(0, 0, 1, dist_max='0.002')
 
 
 def test_circle_maximum_distance_is_negative():
     with pytest.raises(ValueError):
-        Circle(0, 0, 1, dist_max=0)
+        c = Circle(0, 0, 1, dist_max=0)
 
 
 def test_circle_center_x_coordinate():
@@ -108,12 +107,14 @@ def test_circle_curvature():
     curva = np.ones(100) / 2
     assert_almost_equal(c.curvature, curva)
 
+
 def test_circle_assert_outpointing_normals():
     c = Circle(11.3, -12.9, 2)
-    points = c.points - np.array([[11.3], [-12.9]])
+    points = c.points - c.shift
     normals = c.normals
     cross_product = np.sum(points * normals, axis=0)
     assert np.all(cross_product >= 0)
+
 
 def test_circle_plot():
     from matplotlib.lines import Line2D
@@ -124,102 +125,102 @@ def test_circle_plot():
 
 def test_circle_repr():
     c = Circle(10.2, 7.8, 2, n_points=100)
-    repr_str = (f'<Circle(Ellipse)>: center_x = {10.2},\n'
-                f'                   center_y = {7.8},\n'
-                f'                   r = {2},\n'
-                f'                   n_points = {100}.')
+    repr_str = ('<Circle(Ellipse)>: center_x = 10.2,\n'
+                '                   center_y = 7.8,\n'
+                '                   r = 2,\n'
+                '                   n_points = 100.')
     assert repr(c) == repr_str
 
 
 def test_circle_str():
     c = Circle(10.2, 7.8, 2, n_points=100)
     s = ('A circle with\n'
-         f'    radius = {2},\n'
-         f'    centered at ({10.2}, {7.8}).')
+         '    radius = 2,\n'
+         '    centered at (10.2, 7.8).')
     assert str(c) == s
 
 
-"""Test class Ellipse."""
+# Test class Ellipse.
 
 
 def test_ellipse_center_x_is_not_numeric_1():
     with pytest.raises(ValueError):
-        Ellipse('10.2', 0, 1, 2)
+        e = Ellipse('10.2', 0, 1, 2)
 
 
 def test_ellipse_center_x_is_not_numeric_2():
     with pytest.raises(ValueError):
-        Ellipse(np.inf, 0, 1, 2)
+        e = Ellipse(np.inf, 0, 1, 2)
 
 
 def test_ellipse_center_y_is_not_numeric():
     with pytest.raises(ValueError):
-        Ellipse(10.2, '0.0', 1, 2)
+        e = Ellipse(10.2, '0.0', 1, 2)
 
 
 def test_ellipse_semi_major_axis_a_is_not_numeric():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, '1', 2)
+        e = Ellipse(0, 0, '1', 2)
 
 
 def test_ellipse_semi_major_axis_a_is_negative():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, -1, 2)
+        e = Ellipse(0, 0, -1, 2)
 
 
 def test_ellipse_semi_minor_axis_b_is_not_numeric():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, '2')
+        e = Ellipse(0, 0, 1, '2')
 
 
 def test_ellipse_semi_minor_axis_b_is_negative():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, -2)
+        e = Ellipse(0, 0, 1, -2)
 
 
 def test_ellipse_n_points_is_not_integer_1():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, 2, n_points='10.2')
+        e = Ellipse(0, 0, 1, 2, n_points='10.2')
 
 
 def test_ellipse_n_points_is_not_integer_2():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, 2, n_points=10.2)
+        e = Ellipse(0, 0, 1, 2, n_points=10.2)
 
 
 def test_ellipse_n_points_is_too_small():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, 2, n_points=1)
+        e = Ellipse(0, 0, 1, 2, n_points=1)
 
 
 def test_ellipse_maximum_distance_is_not_numeric():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, 2, dist_max='0.002')
+        e = Ellipse(0, 0, 1, 2, dist_max='0.002')
 
 
 def test_ellipse_maximum_distance_is_negative():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, 2, dist_max=0)
+        e = Ellipse(0, 0, 1, 2, dist_max=0)
 
 
 def test_ellipse_rotate_angle_is_not_numeric():
     with pytest.raises(ValueError):
-        Ellipse(0, 0, 1, 2, rotate_angle='90')
+        e = Ellipse(0, 0, 1, 2, rotate_angle='90')
 
 
 def test_ellipse_positional_argument_missing_1():
     with pytest.raises(TypeError):
-        Ellipse()
+        e = Ellipse()
 
 
 def test_ellipse_positional_argument_missing_2():
     with pytest.raises(TypeError):
-        Ellipse(0, 0)
+        e = Ellipse(0, 0)
 
 
 def test_ellipse_positional_argument_missing_3():
     with pytest.raises(TypeError):
-        Ellipse(0, 0, 1)
+        e = Ellipse(0, 0, 1)
 
 
 def test_ellipse_center_x_coordinate():
@@ -257,13 +258,14 @@ def test_ellipse_maximum_distance():
     assert np.max(e.dl) <= 0.1
 
 
-def test_ellipse_rotation_angle_1():
-    e1 = Ellipse(0, 0, 1, 2, rotate_angle=60)
-    e2 = Ellipse(0, 0, 1, 2, rotate_angle=-300)
+def test_ellipse_rotate_angle_1():
+    e1 = Ellipse(10, -20.3, 1, 2, rotate_angle=60)
+    e2 = Ellipse(10, -20.3, 1, 2, rotate_angle=-300)
     assert_almost_equal(e1.points, e2.points)
+    assert_almost_equal(e1.normals, e2.normals)
 
 
-def test_ellipse_rotation_angle_2():
+def test_ellipse_rotate_angle_2():
     e = Ellipse(0, 0, 1, 2,
                 rotate_angle=90, refine=False, n_points=4)
     desired_normals = np.array(
@@ -316,12 +318,14 @@ def test_ellipse_normals():
     )
     assert_almost_equal(e.normals, desired_normals)
 
+
 def test_ellipse_assert_outpointing_normals():
     e = Ellipse(12.3, 31.4, 2, 1)
     points = e.points - np.array([[12.3], [31.4]])
     normals = e.normals
     cross_product = np.sum(points * normals, axis=0)
     assert np.all(cross_product >= 0)
+
 
 def test_ellipse_plot():
     from matplotlib.lines import Line2D
@@ -345,11 +349,11 @@ def test_ellipse_area():
 def test_ellipse_repr():
     e = Ellipse(10.2, -7.8, 2, 1,
                 n_points=100, refine=False, rotate_angle=60)
-    repr_str = (f'<Ellipse>: center_x = {10.2},\n'
-                f'           center_y = {-7.8},\n'
-                f'           a = {2}, b = {1},\n'
-                f'           n_points = {100},\n'
-                f'           rotate_angle = {60}.')
+    repr_str = ('<Ellipse>: center_x = 10.2,\n'
+                '           center_y = -7.8,\n'
+                '           a = 2, b = 1,\n'
+                '           n_points = 100,\n'
+                '           rotate_angle = 60.')
     assert repr(e) == repr_str
 
 
@@ -357,14 +361,14 @@ def test_ellipse_str():
     e = Ellipse(10.2, -7.8, 2, 1,
                 n_points=100, refine=False, rotate_angle=60)
     s = ('An ellipse with\n'
-         f'    a = {2}, b = {1},\n'
-         f'    centered at ({10.2}, {-7.8}),\n'
-         f'    rotated {60} degrees\n'
+         '    a = 2, b = 1,\n'
+         '    centered at (10.2, -7.8),\n'
+         '    rotated 60 degrees\n'
          '    in anticlockwise direction.')
     assert str(e) == s
 
 
-"""Test class Shape."""
+# Test class Shape.
 
 
 def test_shape_model_is_polygon():
@@ -402,7 +406,7 @@ def test_shape_model_is_ndarray_clockwise_winding():
 
 def test_shape_model_is_other_object():
     with pytest.raises(NotImplementedError):
-        Shape([[1, 2, 3], [4, 5, 6]])
+        shp = Shape([[1, 2, 3], [4, 5, 6]])
 
 
 def test_shape_model_wrong_shape_1():
@@ -412,7 +416,7 @@ def test_shape_model_wrong_shape_1():
          [0, 0, 0, 0]]
     )
     with pytest.raises(ValueError):
-        Shape(model)
+        shp = Shape(model)
 
 
 def test_shape_model_wrong_shape_2():
@@ -421,7 +425,7 @@ def test_shape_model_wrong_shape_2():
          [0, 1, 0, -1]]
     ).T
     with pytest.raises(ValueError):
-        Shape(model)
+        shp = Shape(model)
 
 
 def test_shape_model_wrong_shape_3():
@@ -430,7 +434,7 @@ def test_shape_model_wrong_shape_3():
          [0, 1]]
     )
     with pytest.raises(ValueError):
-        Shape(model)
+        shp = Shape(model)
 
 
 def test_shape_model_wrong_shape_4():
@@ -438,7 +442,7 @@ def test_shape_model_wrong_shape_4():
         [[1, 0]]
     )
     with pytest.raises(ValueError):
-        Shape(model)
+        shp = Shape(model)
 
 
 def test_shape_number_of_points():
@@ -470,21 +474,36 @@ def test_shape_number_of_points_noninteger():
     with pytest.raises(ValueError):
         shp = Shape(axon1(), n_points=(100,))
 
+
+def test_shape_number_of_points_inf():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), n_points=np.inf)
+
+
 def test_shape_maximum_distance():
     shp = Shape(axon1(), dist_max=0.01)
     assert np.max(shp.dl) <= 0.01
 
+
 def test_shape_maximum_distance_is_not_number_1():
     with pytest.raises(ValueError):
-        Shape(axon1(), dist_max='0.01')
+        shp = Shape(axon1(), dist_max='0.01')
+
 
 def test_shape_maximum_distance_is_not_number_2():
     with pytest.raises(ValueError):
-        Shape(axon1(), dist_max=(0.01,))
+        shp = Shape(axon1(), dist_max=(0.01,))
+
 
 def test_shape_maximum_distance_is_negative():
     with pytest.raises(ValueError):
-        Shape(axon1(), dist_max=-0.01)
+        shp = Shape(axon1(), dist_max=-0.01)
+
+
+def test_shape_maximum_distance_is_inf():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), dist_max=np.inf)
+
 
 def test_shape_x_shift():
     shp1 = Shape(axon1(), x_shift=-6)
@@ -493,6 +512,7 @@ def test_shape_x_shift():
     shift[0, :] = -6
     assert_almost_equal(shp1.points - shp2.points, shift)
 
+
 def test_shape_y_shift():
     shp1 = Shape(axon1(), y_shift=3)
     shp2 = Shape(axon1())
@@ -500,29 +520,95 @@ def test_shape_y_shift():
     shift[1, :] = 3
     assert_almost_equal(shp1.points - shp2.points, shift)
 
-# def test_shape_rotate_angle():
-#     shp1 = Shape(axon1(), y_shift=3)
-#     shp2 = Shape(axon1())
-#     shift = np.zeros_like(shp1.points)
-#     shift[1, :] = 3
-#     assert_almost_equal(shp1.points - shp2.points, shift)
+
+def test_shape_x_shift_not_numeric():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), x_shift='10')
 
 
+def test_shape_y_shift_not_numeric():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), y_shift='10')
 
 
+def test_shape_x_shift_inf():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), x_shift=np.inf)
 
 
+def test_shape_y_shift_not_numeric():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), y_shift=np.inf)
 
 
+def test_shape_rotate_angle():
+    shp1 = Shape(axon1(), x_shift=5, y_shift=3, rotate_angle=40)
+    shp2 = Shape(axon1(), x_shift=5, y_shift=3, rotate_angle=-320)
+    assert_almost_equal(shp1.points, shp2.points)
+    assert_almost_equal(shp1.normals, shp2.normals)
 
 
+def test_shape_rotate_angle_not_numeric():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), rotate_angle='90')
 
-"""Test function project_stl."""
+
+def test_shape_rotate_angle_is_inf():
+    with pytest.raises(ValueError):
+        shp = Shape(axon1(), rotate_angle=np.inf)
+
+
+def test_shape_normals_with_shift_and_rotation():
+    shp1 = Shape(axon1(), x_shift=3, y_shift=-10, rotate_angle=60)
+    shp2 = Shape(axon1(), rotate_angle=60)
+    assert_almost_equal(shp1.normals, shp2.normals)
+
+
+def test_shape_normals_with_shift_and_rotation():
+    shp1 = Shape(axon1(), x_shift=3, y_shift=-10, rotate_angle=60)
+    shp2 = Shape(axon1(), rotate_angle=60)
+    assert_almost_equal(shp1.normals, shp2.normals)
+
+
+def test_shape_refine():
+    shp1 = Shape(axon1(), refine=False)
+    shp2 = Shape(axon1(), refine=True)
+    assert len(shp1) < len(shp2)
+
+
+def test_shape_plot():
+    from matplotlib.lines import Line2D
+    shp1 = Shape(axon1())
+    h = shp1.plot()
+    assert isinstance(h[0], Line2D)
+
+
+def test_shape_repr_string():
+    shp = Shape(axon1(), n_points=300, refine=False, rotate_angle=-60)
+    desired_str = ('<Model2d>: n_points = 300,\n'
+                   '           perimeter = 29.29,\n'
+                   '           area = 50.98,\n'
+                   '           rotate_angle = -60.')
+    assert repr(shp) == desired_str
+
+
+def test_shape_str_string():
+    shp = Shape(axon1(), n_points=300, refine=False, rotate_angle=-60)
+    desired_str = ('An imported model with\n'
+                   '    perimeter = 29.29,\n'
+                   '    area = 50.98,\n'
+                   '    n_points = 300,\n'
+                   '    rotated angle = -60 degree,\n'
+                   '    max_curvature = 2.7905.')
+    assert str(shp) == desired_str
+
+
+# Test function project_stl.
 
 
 def test_project_stl_input_random_path():
     with pytest.raises(ValueError):
-        project_stl('qwerty/uiop.stl')
+        msh = project_stl('qwerty/uiop.stl')
 
 
 def test_project_stl_path():
@@ -574,24 +660,24 @@ def test_project_stl_projection_tuple_2():
 
 def test_project_stl_projection_random_string():
     with pytest.raises(ValueError):
-        project_stl(mesh(), projection='qwerty')
+        msh = project_stl(mesh(), projection='qwerty')
 
 
 def test_project_stl_projection_wrong_type_1():
     with pytest.raises(ValueError):
-        project_stl(mesh(), projection=(1, 'a', 3))
+        msh = project_stl(mesh(), projection=(1, 'a', 3))
 
 
 def test_project_stl_projection_wrong_type_2():
     with pytest.raises(ValueError):
-        project_stl(mesh(), projection=dict())
+        msh = project_stl(mesh(), projection=dict())
 
 
 def test_project_stl_projection_wrong_normal_vector():
     with pytest.raises(NameError):
-        project_stl(mesh(), projection=[0, 0, 0])
+        msh = project_stl(mesh(), projection=[0, 0, 0])
 
 
 def test_project_stl_projection_negative_remesh_size():
     with pytest.raises(ValueError):
-        project_stl(mesh(), remesh_size=-0.1)
+        msh = project_stl(mesh(), remesh_size=-0.1)
